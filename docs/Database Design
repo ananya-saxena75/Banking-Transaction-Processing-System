@@ -1,0 +1,117 @@
+# **Database Design**
+
+## 1. Database Overview
+
+The Banking Transaction Processing System uses MySQL 8.0 with the InnoDB storage engine.
+The database is designed to maintain customer information, bank accounts, transaction records, transaction audit history, and failed transaction details.
+
+### Tables
+
+The database consists of five tables:
+
+1. `customer`
+2. `account`
+3. `bank_transaction`
+4. `transaction_audit`
+5. `failed_transaction`
+
+## 2. Table Design
+
+### 2.1 CUSTOMER
+
+Stores customer information.
+
+| Column | Data Type | Constraints |
+|---|---|---|
+| customer_id | BIGINT | Primary Key, Auto Increment |
+| first_name | VARCHAR(50) | NOT NULL |
+| last_name | VARCHAR(50) | NOT NULL |
+| email | VARCHAR(100) | NOT NULL, UNIQUE |
+| phone | VARCHAR(15) | NULL |
+| created_at | DATETIME(6) | NOT NULL, DEFAULT CURRENT_TIMESTAMP(6) |
+
+### 2.2 ACCOUNT
+
+Stores bank account details and current balances.
+
+| Column | Data Type | Constraints |
+|---|---|---|
+| account_id | BIGINT | Primary Key, Auto Increment |
+| customer_id | BIGINT | Foreign Key |
+| account_number | VARCHAR(30) | NOT NULL, UNIQUE |
+| balance | DECIMAL(15,2) | NOT NULL, DEFAULT 0.00 |
+| account_type | VARCHAR(20) | NOT NULL |
+| account_status | VARCHAR(20) | NOT NULL, DEFAULT 'ACTIVE' |
+| created_at | DATETIME(6) | NOT NULL |
+| updated_at | DATETIME(6) | NOT NULL |
+
+**Relationship:** One customer can own multiple bank accounts.
+
+### 2.3 BANK_TRANSACTION
+
+Stores deposit, withdrawal, and transfer requests and their processing details.
+
+| Column | Data Type | Constraints |
+|---|---|---|
+| transaction_id | VARCHAR(50) | Primary Key |
+| source_account_id | BIGINT | Foreign Key, NULL |
+| destination_account_id | BIGINT | Foreign Key, NULL |
+| amount | DECIMAL(15,2) | NOT NULL |
+| transaction_type | VARCHAR(20) | NOT NULL |
+| transaction_status | VARCHAR(20) | NOT NULL, DEFAULT 'PENDING' |
+| created_at | DATETIME(6) | NOT NULL |
+| processed_at | DATETIME(6) | NULL |
+| source_account_number | VARCHAR(30) | NULL |
+| destination_account_number | VARCHAR(30) | NULL |
+
+**Transaction account mapping:**
+
+- DEPOSIT: source account is NULL; destination account is provided.
+- WITHDRAWAL: source account is provided; destination account is NULL.
+- TRANSFER: both accounts are provided.
+
+### 2.4 TRANSACTION_AUDIT
+
+Maintains an audit trail of transaction processing events.
+
+| Column | Data Type | Constraints |
+|---|---|---|
+| audit_id | BIGINT | Primary Key, Auto Increment |
+| transaction_id | VARCHAR(50) | Foreign Key |
+| event_type | VARCHAR(50) | NOT NULL |
+| previous_status | VARCHAR(20) | NULL |
+| new_status | VARCHAR(20) | NULL |
+| reason | VARCHAR(255) | NULL |
+| created_at | DATETIME(6) | NOT NULL |
+| processed_by_thread | VARCHAR(100) | NULL |
+
+
+### 2.5 FAILED_TRANSACTION
+
+Stores failure details for transactions that could not be processed successfully.
+
+| Column | Data Type | Constraints |
+|---|---|---|
+| failure_id | BIGINT | Primary Key, Auto Increment |
+| transaction_id | VARCHAR(50) | Foreign Key, UNIQUE |
+| failure_reason | TEXT | NOT NULL |
+| error_category | VARCHAR(50) | NOT NULL |
+| failed_at | DATETIME(6) | NOT NULL |
+
+## 3. Entity Relationships
+
+- CUSTOMER → ACCOUNT: One-to-Many
+- ACCOUNT → BANK_TRANSACTION (source): One-to-Many
+- ACCOUNT → BANK_TRANSACTION (destination): One-to-Many
+- BANK_TRANSACTION → TRANSACTION_AUDIT: One-to-Many
+- BANK_TRANSACTION → FAILED_TRANSACTION: One-to-Zero-or-One
+
+Refer to `ER_Diagram.png` for the visual representation.
+
+## 4. Primary and Foreign Keys
+  
+- `account.customer_id` references `customer.customer_id`.
+- `bank_transaction.source_account_id` references `account.account_id`.
+- `bank_transaction.destination_account_id` references `account.account_id`.
+- `transaction_audit.transaction_id` references `bank_transaction.transaction_id`.
+- `failed_transaction.transaction_id` references `bank_transaction.transaction_id`.
